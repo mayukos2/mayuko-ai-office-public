@@ -1,5 +1,5 @@
 const TASK_STATUSES = ["未着手", "相談中", "素材待ち", "Codex投入待ち", "実務中", "確認待ち", "完了", "保留"];
-const ASSET_VERSION = "20260623-public-memo1";
+const ASSET_VERSION = "20260623-public-gas-ready1";
 const MEMO_STORAGE_KEY = "mayuko-ai-office.public.memo.v1";
 const GAS_ENDPOINT = "";
 const CHARACTER_PLACEHOLDER = "assets/characters/employee-placeholder.png";
@@ -164,7 +164,7 @@ function renderAgent(agent) {
   ].filter(Boolean).join(" ");
   const image = getAgentImage(agent, stats);
   return `
-    <button class="${classes}" type="button" data-agent-id="${agent.id}" style="--x:${position.x}; --y:${position.y}; --size:${position.size}" aria-label="${escapeHtml(agent.name)}を開く">
+    <button class="${classes}" type="button" data-agent-id="${agent.id}" style="--x:${position.x}; --y:${position.y}; --size:${position.size}; --label-y:${position.labelY}; --speech-y:${position.speechY}" aria-label="${escapeHtml(agent.name)}を開く">
       ${stats.consulting ? `<span class="speech">相談中</span>` : ""}
       ${stats.codex ? `<span class="badge">${stats.codex}</span>` : ""}
       ${stats.done ? `<span class="done">✓</span>` : ""}
@@ -339,7 +339,9 @@ function getAgentPosition(agent) {
   return {
     x: Number(agent.position?.x ?? 50),
     y: Number(agent.position?.y ?? 84),
-    size: Number(agent.position?.size ?? 14)
+    size: Number(agent.position?.size ?? 14),
+    labelY: Number(agent.position?.labelY ?? 76),
+    speechY: Number(agent.position?.speechY ?? 24)
   };
 }
 

@@ -236,7 +236,7 @@ h1 {
 .name-label {
   position: absolute;
   left: 50%;
-  top: 80%;
+  top: calc(var(--label-y, 76) * 1%);
   z-index: 2;
   width: max-content;
   max-width: 128px;
@@ -263,7 +263,7 @@ h1 {
 
 .speech {
   left: 50%;
-  top: -20px;
+  top: calc(var(--speech-y, 24) * 1%);
   min-width: 48px;
   padding: 5px 8px;
   border: 1px solid rgba(245, 169, 201, 0.45);
@@ -701,14 +701,12 @@ h1 {
   }
 
   .name-label {
-    top: 79%;
     max-width: 118px;
     padding: 4px 6px;
     font-size: 0.6rem;
   }
 
   .speech {
-    top: -17px;
     min-width: 43px;
     padding: 4px 6px;
     font-size: 0.56rem;
