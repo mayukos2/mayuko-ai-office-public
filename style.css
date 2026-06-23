@@ -210,9 +210,7 @@ h1 {
   background: transparent;
   box-shadow: none;
   transform: translate(-50%, -78%);
-  display: grid;
-  justify-items: center;
-  gap: 3px;
+  display: block;
   color: inherit;
   transition: transform 180ms ease;
 }
@@ -236,8 +234,12 @@ h1 {
 }
 
 .name-label {
-  max-width: 112px;
-  margin-top: -18px;
+  position: absolute;
+  left: 50%;
+  top: 80%;
+  z-index: 2;
+  width: max-content;
+  max-width: 128px;
   padding: 5px 8px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -246,9 +248,9 @@ h1 {
   font-size: 0.74rem;
   font-weight: 900;
   line-height: 1.15;
+  white-space: nowrap;
   box-shadow: 0 6px 12px rgba(72, 54, 102, 0.08);
-  position: relative;
-  z-index: 2;
+  transform: translateX(-50%);
 }
 
 .speech,
@@ -262,12 +264,15 @@ h1 {
 .speech {
   left: 50%;
   top: -20px;
+  min-width: 48px;
   padding: 5px 8px;
   border: 1px solid rgba(245, 169, 201, 0.45);
   border-radius: 12px 12px 12px 4px;
   background: #fff7fb;
   color: #bf5f8b;
   font-size: 0.68rem;
+  line-height: 1;
+  white-space: nowrap;
   transform: translateX(-50%);
 }
 
@@ -421,6 +426,31 @@ h1 {
   color: var(--text);
   font-size: 0.92rem;
   line-height: 1.55;
+}
+
+.memo-input {
+  width: 100%;
+  min-height: 74px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.memo-button {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--lavender-600);
+  color: #fff;
+  font-weight: 900;
 }
 
 .agent-progress-list {
@@ -671,15 +701,17 @@ h1 {
   }
 
   .name-label {
-    max-width: 90px;
+    top: 79%;
+    max-width: 118px;
     padding: 4px 6px;
-    font-size: 0.65rem;
+    font-size: 0.6rem;
   }
 
   .speech {
     top: -17px;
+    min-width: 43px;
     padding: 4px 6px;
-    font-size: 0.6rem;
+    font-size: 0.56rem;
   }
 
   .badge {

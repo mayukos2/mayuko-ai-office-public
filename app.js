@@ -1,5 +1,7 @@
 const TASK_STATUSES = ["未着手", "相談中", "素材待ち", "Codex投入待ち", "実務中", "確認待ち", "完了", "保留"];
-const ASSET_VERSION = "20260623-public-progress1";
+const ASSET_VERSION = "20260623-public-memo1";
+const MEMO_STORAGE_KEY = "mayuko-ai-office.public.memo.v1";
+const GAS_ENDPOINT = "";
 const CHARACTER_PLACEHOLDER = "assets/characters/employee-placeholder.png";
 
 const FLOORS = [
@@ -203,8 +205,9 @@ function renderDetail() {
         <strong>${escapeHtml(getWaitingText(mainTask))}</strong>
       </div>
       <div>
-        <span>次の一手</span>
-        <strong>${escapeHtml(mainTask?.nextAction || "次の相談で決める")}</strong>
+        <span>私のメモ</span>
+        <textarea class="memo-input" id="memoInput" rows="3" placeholder="今のメモを書く">${escapeHtml(getSavedMemo(agent.id))}</textarea>
+        <button class="memo-button" type="button" id="memoButton">${GAS_ENDPOINT ? "メモを送信" : "メモを保存"}</button>
       </div>
       <div>
         <span>最終更新</span>
@@ -221,6 +224,12 @@ function renderDetail() {
   const openButton = document.querySelector("#openChatButton");
   if (openButton && agent.chatUrl) {
     openButton.addEventListener("click", () => window.open(agent.chatUrl, "_blank", "noopener"));
+  }
+
+  const memoButton = document.querySelector("#memoButton");
+  const memoInput = document.querySelector("#memoInput");
+  if (memoButton && memoInput) {
+    memoButton.addEventListener("click", () => handleMemoSubmit(agent, mainTask, memoInput.value));
   }
 }
 
@@ -267,6 +276,50 @@ function getWaitingText(task) {
   if (task.status === "完了") return "完了";
   if (task.status === "保留") return "再開待ち";
   return task.status;
+}
+
+function getSavedMemo(agentId) {
+  try {
+    const data = JSON.parse(localStorage.getItem(MEMO_STORAGE_KEY) || "{}");
+    return data[agentId] || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveMemo(agentId, memo) {
+  const data = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(MEMO_STORAGE_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  })();
+  data[agentId] = memo;
+  localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(data));
+}
+
+async function handleMemoSubmit(agent, task, memo) {
+  saveMemo(agent.id, memo);
+  if (!GAS_ENDPOINT) {
+    alert("メモをこのスマホに保存しました。スプレッドシート連携はGAS URLを設定したら有効になります。");
+    return;
+  }
+
+  await fetch(GAS_ENDPOINT, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      agentId: agent.id,
+      agentName: agent.name,
+      taskTitle: task?.title || "",
+      status: task?.status || "",
+      memo,
+      sentAt: new Date().toISOString()
+    })
+  });
+  alert("メモを送信しました。");
 }
 
 function getActiveFloor() {
