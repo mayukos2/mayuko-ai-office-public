@@ -134,6 +134,20 @@ h1 {
   margin-bottom: 10px;
 }
 
+.president-tab {
+  grid-column: 1 / -1;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--lavender-600);
+  font-size: 0.94rem;
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 8px 18px rgba(72, 54, 102, 0.06);
+}
+
 .floor-tab {
   min-height: 44px;
   padding: 8px 9px;
@@ -161,6 +175,13 @@ h1 {
   border-color: var(--lavender-300);
   background: linear-gradient(135deg, #fff, var(--lavender-100));
   color: var(--lavender-600);
+}
+
+.president-tab.is-active {
+  border-color: var(--lavender-300);
+  background: linear-gradient(135deg, #fff, #f1e8ff);
+  color: var(--lavender-600);
+  box-shadow: 0 12px 24px rgba(118, 81, 189, 0.16);
 }
 
 .office-stage {
@@ -198,6 +219,68 @@ h1 {
 .agent-layer {
   position: absolute;
   inset: 0;
+}
+
+.president-room-panel {
+  position: absolute;
+  inset: 72px 18px 18px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 16px 34px rgba(72, 54, 102, 0.14);
+  overflow: auto;
+}
+
+.president-room-head h2 {
+  margin-bottom: 0;
+  font-size: 1.28rem;
+}
+
+.president-task-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.president-task-card {
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.president-task-card h3 {
+  margin: 8px 0 10px;
+  font-size: 0.98rem;
+}
+
+.president-task-card dl,
+.president-task-card dd {
+  margin: 0;
+}
+
+.president-task-card dl {
+  display: grid;
+  gap: 7px;
+}
+
+.president-task-card dl div {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.president-task-card dt {
+  color: var(--lavender-600);
+  font-weight: 900;
 }
 
 .agent-pin {
@@ -665,6 +748,13 @@ h1 {
     margin-bottom: 7px;
   }
 
+  .president-tab {
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 11px;
+    font-size: 0.78rem;
+  }
+
   .floor-tab {
     min-height: 38px;
     padding: 6px 5px;
@@ -683,7 +773,7 @@ h1 {
   }
 
   .office-stage {
-    height: calc(52svh - 61px);
+    height: calc(52svh - 108px);
     min-height: 0;
     aspect-ratio: auto;
     border-radius: 13px;
@@ -710,6 +800,36 @@ h1 {
     min-width: 43px;
     padding: 4px 6px;
     font-size: 0.56rem;
+  }
+
+  .president-room-panel {
+    inset: 48px 8px 8px;
+    padding: 10px;
+    border-radius: 13px;
+    gap: 8px;
+  }
+
+  .president-room-head h2 {
+    font-size: 1rem;
+  }
+
+  .president-task-list {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .president-task-card {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .president-task-card h3 {
+    font-size: 0.86rem;
+  }
+
+  .president-task-card dl div {
+    grid-template-columns: 72px minmax(0, 1fr);
+    font-size: 0.72rem;
   }
 
   .badge {

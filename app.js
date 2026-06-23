@@ -1,5 +1,5 @@
-const TASK_STATUSES = ["未着手", "相談中", "素材待ち", "Codex投入待ち", "実務中", "確認待ち", "完了", "保留"];
-const ASSET_VERSION = "20260624-auto-sync1";
+const TASK_STATUSES = ["未着手", "相談中", "素材待ち", "Codex投入待ち", "実務中", "確認待ち", "完了", "保留", "明日やることある"];
+const ASSET_VERSION = "20260624-president-room1";
 const MEMO_STORAGE_KEY = "mayuko-ai-office.public.memo.v1";
 const SYNC_INTERVAL_MS = 60000;
 const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzpyQd8AlufvsC0zy4E5g8A47dQWYrbqpn8XZyjoAFLxE6Pjz-xY99WOyDOO4SEZjNh/exec";
@@ -7,6 +7,8 @@ const GAS_STATUS_ENDPOINT = GAS_ENDPOINT;
 const PROJECT_ID = "mayuko-ai-office";
 const PROJECT_NAME = "まゆこAIオフィス";
 const CHARACTER_PLACEHOLDER = "assets/characters/employee-placeholder.png";
+const PRESIDENT_ROOM_ID = "president-room";
+const PRESIDENT_ROOM_BACKGROUND = "assets/office/president-room.jpg";
 
 const FLOORS = [
   {
@@ -47,7 +49,7 @@ const state = {
   agents: [],
   tasks: [],
   activeAgentId: "",
-  activeFloorId: FLOORS[0].id,
+  activeFloorId: PRESIDENT_ROOM_ID,
   taskFilter: "all"
 };
 
@@ -77,7 +79,7 @@ async function init() {
   state.agents = agents;
   state.tasks = normalizeDisplayTasks(syncedTasks.tasks);
   state.activeAgentId = state.agents[0]?.id || "";
-  state.activeFloorId = getAgentFloorId(state.agents[0]) || FLOORS[0].id;
+  state.activeFloorId = PRESIDENT_ROOM_ID;
   els.dataSourceNote.textContent = syncedTasks.source === "gas" ? getSyncNote() : "公開用データ表示中";
 
   setupFilters();
@@ -159,7 +161,8 @@ function statusRowToTask(row) {
     summary: row["今どこまで"] || taskTitle,
     waitingFor: row["何待ち"] || "",
     memo: row["私のメモ"] || "",
-    nextAction: row["何待ち"] || "進捗を確認する",
+    relatedAgents: row["関係AI"] || "",
+    nextAction: row["次の一手"] || row["何待ち"] || "進捗を確認する",
     lastUpdated: row["最終更新"] || row["最終メモ日時"] || "",
     isMeta: isMetaTask(taskTitle)
   };
@@ -216,26 +219,37 @@ function renderKpis() {
 }
 
 function renderOffice() {
-  const floor = getActiveFloor();
-  const agents = floor.agentIds.map((id) => state.agents.find((agent) => agent.id === id)).filter(Boolean);
+  const isPresidentRoom = state.activeFloorId === PRESIDENT_ROOM_ID;
+  const floor = isPresidentRoom ? null : getActiveFloor();
+  const agents = floor ? floor.agentIds.map((id) => state.agents.find((agent) => agent.id === id)).filter(Boolean) : [];
 
-  els.floorTabs.innerHTML = FLOORS.map((item) => `
-    <button class="floor-tab ${item.id === floor.id ? "is-active" : ""}" type="button" data-floor-id="${item.id}">
-      <span>${item.short}</span>${escapeHtml(item.room)}
+  els.floorTabs.innerHTML = `
+    <button class="president-tab ${isPresidentRoom ? "is-active" : ""}" type="button" data-floor-id="${PRESIDENT_ROOM_ID}">
+      社長室
     </button>
-  `).join("");
-
-  els.officeStage.innerHTML = `
-    <img class="office-bg" src="${versionAsset(floor.background)}" alt="">
-    <span class="floor-label">${escapeHtml(floor.name)}</span>
-    <div class="agent-layer">
-      ${agents.map(renderAgent).join("")}
-    </div>
+    ${FLOORS.map((item) => `
+      <button class="floor-tab ${!isPresidentRoom && item.id === floor.id ? "is-active" : ""}" type="button" data-floor-id="${item.id}">
+        <span>${item.short}</span>${escapeHtml(item.room)}
+      </button>
+    `).join("")}
   `;
 
-  els.floorTabs.querySelectorAll(".floor-tab").forEach((button) => {
+  els.officeStage.innerHTML = isPresidentRoom ? renderPresidentRoom() : `
+      <img class="office-bg" src="${versionAsset(floor.background)}" alt="">
+      <span class="floor-label">${escapeHtml(floor.name)}</span>
+      <div class="agent-layer">
+        ${agents.map(renderAgent).join("")}
+      </div>
+    `;
+
+  els.floorTabs.querySelectorAll("[data-floor-id]").forEach((button) => {
     button.addEventListener("click", () => {
       state.activeFloorId = button.dataset.floorId;
+      if (state.activeFloorId === PRESIDENT_ROOM_ID) {
+        renderOffice();
+        renderDetail();
+        return;
+      }
       const nextFloor = getActiveFloor();
       if (!nextFloor.agentIds.includes(state.activeAgentId)) {
         state.activeAgentId = nextFloor.agentIds[0] || state.activeAgentId;
@@ -253,6 +267,42 @@ function renderOffice() {
       renderDetail();
     });
   });
+}
+
+function renderPresidentRoom() {
+  const tomorrowTasks = getPresidentRoomTasks();
+  return `
+    <img class="office-bg" src="${versionAsset(PRESIDENT_ROOM_BACKGROUND)}" alt="">
+    <span class="floor-label">社長室: 明日やること確認</span>
+    <div class="president-room-panel">
+      <div class="president-room-head">
+        <p class="eyebrow">President Room</p>
+        <h2>明日やること</h2>
+      </div>
+      <div class="president-task-list">
+        ${tomorrowTasks.length ? tomorrowTasks.map(renderPresidentTask).join("") : `<p class="empty">明日やることある状態のタスクはありません。</p>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderPresidentTask(task) {
+  const agent = state.agents.find((item) => item.id === task.ownerAgentId);
+  return `
+    <article class="president-task-card">
+      <div>
+        <span class="task-status">${escapeHtml(task.status)}</span>
+        <h3>${escapeHtml(task.title || "進捗確認")}</h3>
+      </div>
+      <dl>
+        <div><dt>主担当AI</dt><dd>${escapeHtml(agent?.name || "未登録")}</dd></div>
+        <div><dt>関係AI</dt><dd>${escapeHtml(task.relatedAgents || "なし")}</dd></div>
+        <div><dt>次の一手</dt><dd>${escapeHtml(task.nextAction || task.waitingFor || "確認する")}</dd></div>
+        <div><dt>Codex投入</dt><dd>${task.codexReady ? "必要" : "不要"}</dd></div>
+        <div><dt>最終更新日</dt><dd>${escapeHtml(formatDate(task.lastUpdated) || "未更新")}</dd></div>
+      </dl>
+    </article>
+  `;
 }
 
 function renderAgent(agent) {
@@ -278,6 +328,30 @@ function renderAgent(agent) {
 }
 
 function renderDetail() {
+  if (state.activeFloorId === PRESIDENT_ROOM_ID) {
+    const tomorrowTasks = getPresidentRoomTasks();
+    els.agentDetail.innerHTML = `
+      <div class="detail-head">
+        <div>
+          <p class="eyebrow">社長室</p>
+          <h2>明日やること確認</h2>
+        </div>
+        <span class="status-chip">${tomorrowTasks.length}件</span>
+      </div>
+      <section class="progress-card" aria-label="社長室の説明">
+        <div>
+          <span>表示条件</span>
+          <strong>状態が「明日やることある」のタスクだけ</strong>
+        </div>
+        <div>
+          <span>使い方</span>
+          <strong>明日見るものをここでまとめて確認します。</strong>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
   const agent = getActiveAgent();
   if (!agent) return;
   const stats = getAgentStats(agent.id);
@@ -358,6 +432,12 @@ function getAgentTasks(agentId) {
   return state.tasks.filter((task) => task.ownerAgentId === agentId && !shouldHideTask(task)).sort(compareTasks);
 }
 
+function getPresidentRoomTasks() {
+  return state.tasks
+    .filter((task) => !shouldHideTask(task) && task.status === "明日やることある")
+    .sort(compareTasks);
+}
+
 function getPrimaryTask(tasks) {
   return tasks.find((task) => task.taskKey !== "overview" && task.title !== "進捗確認") || tasks[0];
 }
@@ -388,6 +468,7 @@ function getWaitingText(task) {
   if (task.status === "実務中") return "作業中";
   if (task.status === "完了") return "完了";
   if (task.status === "保留") return "再開待ち";
+  if (task.status === "明日やることある") return "明日やる";
   return task.status;
 }
 
@@ -519,7 +600,7 @@ function findAgentIdByName(name) {
 }
 
 function compareTasks(a, b) {
-  const priority = ["Codex投入待ち", "相談中", "実務中", "確認待ち", "素材待ち", "未着手", "保留", "完了"];
+  const priority = ["明日やることある", "Codex投入待ち", "相談中", "実務中", "確認待ち", "素材待ち", "未着手", "保留", "完了"];
   const aPriority = priority.indexOf(a.status);
   const bPriority = priority.indexOf(b.status);
   const aScore = aPriority === -1 ? 99 : aPriority;
@@ -585,7 +666,7 @@ function getAgentStats(agentId) {
 
 function getMainStatus(tasks) {
   if (!tasks.length) return "通常";
-  const priority = ["Codex投入待ち", "相談中", "実務中", "確認待ち", "素材待ち", "未着手", "保留", "完了"];
+  const priority = ["明日やることある", "Codex投入待ち", "相談中", "実務中", "確認待ち", "素材待ち", "未着手", "保留", "完了"];
   return priority.find((status) => tasks.some((task) => task.status === status)) || tasks[0].status;
 }
 
