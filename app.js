@@ -1,5 +1,5 @@
 const TASK_STATUSES = ["未着手", "相談中", "素材待ち", "Codex投入待ち", "実務中", "確認待ち", "完了", "保留"];
-const ASSET_VERSION = "20260623-public-project-scope1";
+const ASSET_VERSION = "20260623-public-task-scope1";
 const MEMO_STORAGE_KEY = "mayuko-ai-office.public.memo.v1";
 const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzpyQd8AlufvsC0zy4E5g8A47dQWYrbqpn8XZyjoAFLxE6Pjz-xY99WOyDOO4SEZjNh/exec";
 const GAS_STATUS_ENDPOINT = GAS_ENDPOINT;
@@ -99,7 +99,7 @@ async function loadSyncedTasks(fallbackTasks) {
 
   try {
     const rows = await loadStatusRowsByJsonp(GAS_STATUS_ENDPOINT);
-    const tasks = rows.map(statusRowToTask).filter(Boolean);
+    const tasks = rows.map(statusRowToTask).filter(Boolean).sort(compareTasks);
     return { source: tasks.length ? "gas" : "json", tasks: tasks.length ? tasks : fallbackTasks };
   } catch {
     return { source: "json", tasks: fallbackTasks };
@@ -144,7 +144,10 @@ function statusRowToTask(row) {
   const status = row["状態"] || "未着手";
   const taskTitle = row["タスク名"] || "進捗確認";
   return {
-    id: `office-status-${agentId}`,
+    id: `office-status-${row.projectId || PROJECT_ID}-${agentId}-${row.taskKey || slugTask(taskTitle)}`,
+    projectId: row.projectId || PROJECT_ID,
+    projectName: row["プロジェクト名"] || PROJECT_NAME,
+    taskKey: row.taskKey || slugTask(taskTitle),
     title: taskTitle,
     ownerAgentId: agentId,
     status,
@@ -275,7 +278,7 @@ function renderDetail() {
       </div>
       <div>
         <span>私のメモ</span>
-        <textarea class="memo-input" id="memoInput" rows="3" placeholder="今のメモを書く">${escapeHtml(getSavedMemo(agent.id, mainTask?.memo))}</textarea>
+        <textarea class="memo-input" id="memoInput" rows="3" placeholder="今のメモを書く">${escapeHtml(getSavedMemo(getMemoKey(agent.id, mainTask), mainTask?.memo))}</textarea>
         <button class="memo-button" type="button" id="memoButton">${GAS_ENDPOINT ? "メモを送信" : "メモを保存"}</button>
       </div>
       <div>
@@ -370,7 +373,7 @@ function saveMemo(agentId, memo) {
 }
 
 async function handleMemoSubmit(agent, task, memo) {
-  saveMemo(agent.id, memo);
+  saveMemo(getMemoKey(agent.id, task), memo);
   if (!GAS_ENDPOINT) {
     alert("メモをこのスマホに保存しました。スプレッドシート連携はGAS URLを設定したら有効になります。");
     return;
@@ -385,6 +388,7 @@ async function handleMemoSubmit(agent, task, memo) {
       agentName: agent.name,
       projectId: PROJECT_ID,
       projectName: PROJECT_NAME,
+      taskKey: task?.taskKey || slugTask(task?.title || "overview"),
       taskTitle: task?.title || "",
       status: task?.status || "",
       memo,
@@ -404,6 +408,33 @@ function getActiveAgent() {
 
 function findAgentIdByName(name) {
   return state.agents.find((agent) => agent.name === name)?.id || "";
+}
+
+function compareTasks(a, b) {
+  const priority = ["Codex投入待ち", "相談中", "実務中", "確認待ち", "素材待ち", "未着手", "保留", "完了"];
+  const aPriority = priority.indexOf(a.status);
+  const bPriority = priority.indexOf(b.status);
+  const aScore = aPriority === -1 ? 99 : aPriority;
+  const bScore = bPriority === -1 ? 99 : bPriority;
+  if (aScore !== bScore) return aScore - bScore;
+  if (Boolean(a.title && a.title !== "進捗確認") !== Boolean(b.title && b.title !== "進捗確認")) {
+    return a.title && a.title !== "進捗確認" ? -1 : 1;
+  }
+  return String(b.lastUpdated || "").localeCompare(String(a.lastUpdated || ""));
+}
+
+function getMemoKey(agentId, task) {
+  return `${PROJECT_ID}:${agentId}:${task?.taskKey || "overview"}`;
+}
+
+function slugTask(taskTitle) {
+  const text = String(taskTitle || "overview").trim();
+  if (!text || text === "overview") return "overview";
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w\-ぁ-んァ-ヶ一-龠]/g, "")
+    .slice(0, 160) || "overview";
 }
 
 function getAgentFloorId(agent) {

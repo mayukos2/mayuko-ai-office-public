@@ -10,6 +10,7 @@ const EVENT_HEADERS = [
   'プロジェクト名',
   '担当AI',
   'agentId',
+  'taskKey',
   '状態',
   'タスク名',
   '今どこまで',
@@ -24,6 +25,7 @@ const STATUS_HEADERS = [
   'projectId',
   'プロジェクト名',
   'agentId',
+  'taskKey',
   '担当AI',
   '状態',
   'タスク名',
@@ -96,6 +98,7 @@ function normalizePublicMemo(payload) {
     projectName: safeText(payload.projectName, 160) || DEFAULT_PROJECT_NAME,
     agentName: agentName || findAgentName(agentId),
     agentId,
+    taskKey: safeText(payload.taskKey, 160) || slugTask(payload.taskTitle || 'overview'),
     status: safeText(payload.status, 40),
     taskTitle: safeText(payload.taskTitle, 160),
     nowWhere: '',
@@ -126,6 +129,7 @@ function normalizeFormReport(e) {
     projectName,
     agentName,
     agentId: findAgentId(agentName),
+    taskKey: firstNamed(named, ['タスクID', 'taskKey']) || slugTask(taskTitle || nowWhere || nextAction || 'overview'),
     status,
     taskTitle,
     nowWhere: nowWhere || taskTitle || nextAction,
@@ -169,7 +173,9 @@ function findStatusRowIndex(rows, headers, event) {
       (!getCell(row, headers, 'projectId') && event.projectId === DEFAULT_PROJECT_ID);
     const sameAgent = (event.agentId && getCell(row, headers, 'agentId') === event.agentId) ||
       (event.agentName && getCell(row, headers, '担当AI') === event.agentName);
-    if (sameProject && sameAgent) return i + 1;
+    const sameTask = getCell(row, headers, 'taskKey') === event.taskKey ||
+      (!getCell(row, headers, 'taskKey') && event.taskKey === slugTask(getCell(row, headers, 'タスク名') || getCell(row, headers, '今どこまで') || 'overview'));
+    if (sameProject && sameAgent && sameTask) return i + 1;
   }
   return -1;
 }
@@ -179,6 +185,7 @@ function mergeStatusRow(current, headers, event) {
   setCell(row, headers, 'projectId', event.projectId || getCell(row, headers, 'projectId') || DEFAULT_PROJECT_ID);
   setCell(row, headers, 'プロジェクト名', event.projectName || getCell(row, headers, 'プロジェクト名') || DEFAULT_PROJECT_NAME);
   setCell(row, headers, 'agentId', event.agentId || getCell(row, headers, 'agentId'));
+  setCell(row, headers, 'taskKey', event.taskKey || getCell(row, headers, 'taskKey') || slugTask(event.taskTitle || 'overview'));
   setCell(row, headers, '担当AI', event.agentName || getCell(row, headers, '担当AI'));
   setCell(row, headers, 'lastSource', event.source);
 
@@ -209,6 +216,7 @@ function eventValue(event, header) {
   if (header === 'projectId') return event.projectId || DEFAULT_PROJECT_ID;
   if (header === 'プロジェクト名') return event.projectName || DEFAULT_PROJECT_NAME;
   if (header === 'agentId') return event.agentId;
+  if (header === 'taskKey') return event.taskKey || slugTask(event.taskTitle || 'overview');
   if (header === '担当AI') return event.agentName;
   if (header === '状態') return event.status;
   if (header === 'タスク名') return event.taskTitle;
@@ -279,6 +287,10 @@ function migrateDefaultProject(sheet) {
       setCell(row, headers, 'プロジェクト名', DEFAULT_PROJECT_NAME);
       changed = true;
     }
+    if (!getCell(row, headers, 'taskKey')) {
+      setCell(row, headers, 'taskKey', slugTask(getCell(row, headers, 'タスク名') || getCell(row, headers, '今どこまで') || 'overview'));
+      changed = true;
+    }
     if (changed) {
       sheet.getRange(i + 1, 1, 1, headers.length).setValues([fitRow(row, headers.length)]);
     }
@@ -288,15 +300,16 @@ function migrateDefaultProject(sheet) {
 function seedStatusRows(sheet, projectId, projectName) {
   const headers = getHeaders(sheet, STATUS_HEADERS);
   const rows = sheet.getDataRange().getValues();
-  const keys = new Set(rows.slice(1).map((row) => `${getCell(row, headers, 'projectId')}::${getCell(row, headers, 'agentId')}`));
+  const keys = new Set(rows.slice(1).map((row) => `${getCell(row, headers, 'projectId')}::${getCell(row, headers, 'agentId')}::${getCell(row, headers, 'taskKey')}`));
   AGENTS.forEach(([agentId, agentName]) => {
-    const key = `${projectId}::${agentId}`;
+    const key = `${projectId}::${agentId}::overview`;
     if (!keys.has(key)) {
       sheet.appendRow(buildStatusRow(headers, {
         source: 'setup',
         projectId,
         projectName,
         agentId,
+        taskKey: 'overview',
         agentName,
         status: '未着手',
         taskTitle: '',
@@ -334,6 +347,7 @@ function readStatusRows(projectId) {
       headers.forEach((header, index) => item[header] = row[index]);
       if (!item.projectId) item.projectId = DEFAULT_PROJECT_ID;
       if (!item['プロジェクト名']) item['プロジェクト名'] = DEFAULT_PROJECT_NAME;
+      if (!item.taskKey) item.taskKey = slugTask(item['タスク名'] || item['今どこまで'] || 'overview');
       return item;
     })
     .filter((item) => !projectId || item.projectId === projectId);
@@ -399,6 +413,16 @@ function slugProject(projectName) {
     .replace(/\s+/g, '-')
     .replace(/[^\w\-ぁ-んァ-ヶ一-龠]/g, '')
     .slice(0, 120) || DEFAULT_PROJECT_ID;
+}
+
+function slugTask(taskTitle) {
+  const text = safeText(taskTitle || 'overview', 160);
+  if (!text || text === 'overview') return 'overview';
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-ぁ-んァ-ヶ一-龠]/g, '')
+    .slice(0, 160) || 'overview';
 }
 
 function safeText(value, maxLength) {
