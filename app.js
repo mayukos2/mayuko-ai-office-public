@@ -1,7 +1,8 @@
 const TASK_STATUSES = ["未着手", "相談中", "素材待ち", "Codex投入待ち", "実務中", "確認待ち", "完了", "保留"];
-const ASSET_VERSION = "20260623-public-gas-ready1";
+const ASSET_VERSION = "20260623-public-gas-ready2";
 const MEMO_STORAGE_KEY = "mayuko-ai-office.public.memo.v1";
 const GAS_ENDPOINT = "";
+const GAS_STATUS_ENDPOINT = GAS_ENDPOINT;
 const CHARACTER_PLACEHOLDER = "assets/characters/employee-placeholder.png";
 
 const FLOORS = [
@@ -67,11 +68,12 @@ async function init() {
     loadJson("data/tasks.json", [])
   ]);
 
+  const syncedTasks = await loadSyncedTasks(tasks);
   state.agents = agents;
-  state.tasks = tasks;
+  state.tasks = syncedTasks.tasks;
   state.activeAgentId = state.agents[0]?.id || "";
   state.activeFloorId = getAgentFloorId(state.agents[0]) || FLOORS[0].id;
-  els.dataSourceNote.textContent = "公開用データ表示中";
+  els.dataSourceNote.textContent = syncedTasks.source === "gas" ? "スプシ進捗表示中" : "公開用データ表示中";
 
   setupFilters();
   render();
@@ -86,6 +88,70 @@ async function loadJson(path, fallback) {
     els.dataSourceNote.textContent = "データ読み込みに失敗しました";
     return fallback;
   }
+}
+
+async function loadSyncedTasks(fallbackTasks) {
+  if (!GAS_STATUS_ENDPOINT) {
+    return { source: "json", tasks: fallbackTasks };
+  }
+
+  try {
+    const rows = await loadStatusRowsByJsonp(GAS_STATUS_ENDPOINT);
+    const tasks = rows.map(statusRowToTask).filter(Boolean);
+    return { source: tasks.length ? "gas" : "json", tasks: tasks.length ? tasks : fallbackTasks };
+  } catch {
+    return { source: "json", tasks: fallbackTasks };
+  }
+}
+
+function loadStatusRowsByJsonp(endpoint) {
+  return new Promise((resolve, reject) => {
+    const callbackName = `mayukoOfficeStatus_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const separator = endpoint.includes("?") ? "&" : "?";
+    const script = document.createElement("script");
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("status timeout"));
+    }, 8000);
+
+    window[callbackName] = (data) => {
+      cleanup();
+      resolve(Array.isArray(data?.status) ? data.status : []);
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("status load error"));
+    };
+
+    function cleanup() {
+      window.clearTimeout(timer);
+      delete window[callbackName];
+      script.remove();
+    }
+
+    script.src = `${endpoint}${separator}callback=${encodeURIComponent(callbackName)}`;
+    document.head.appendChild(script);
+  });
+}
+
+function statusRowToTask(row) {
+  const agentId = row.agentId || findAgentIdByName(row["担当AI"]);
+  if (!agentId) return null;
+  const status = row["状態"] || "未着手";
+  const taskTitle = row["タスク名"] || "進捗確認";
+  return {
+    id: `office-status-${agentId}`,
+    title: taskTitle,
+    ownerAgentId: agentId,
+    status,
+    codexReady: row["Codex投入"] === "必要" || status === "Codex投入待ち",
+    summary: row["今どこまで"] || taskTitle,
+    waitingFor: row["何待ち"] || "",
+    memo: row["私のメモ"] || "",
+    nextAction: row["何待ち"] || "進捗を確認する",
+    lastUpdated: row["最終更新"] || row["最終メモ日時"] || ""
+  };
 }
 
 function setupFilters() {
@@ -206,7 +272,7 @@ function renderDetail() {
       </div>
       <div>
         <span>私のメモ</span>
-        <textarea class="memo-input" id="memoInput" rows="3" placeholder="今のメモを書く">${escapeHtml(getSavedMemo(agent.id))}</textarea>
+        <textarea class="memo-input" id="memoInput" rows="3" placeholder="今のメモを書く">${escapeHtml(getSavedMemo(agent.id, mainTask?.memo))}</textarea>
         <button class="memo-button" type="button" id="memoButton">${GAS_ENDPOINT ? "メモを送信" : "メモを保存"}</button>
       </div>
       <div>
@@ -267,6 +333,7 @@ function renderAgentProgressList(tasks) {
 
 function getWaitingText(task) {
   if (!task) return "報告待ち";
+  if (task.waitingFor) return task.waitingFor;
   if (task.status === "素材待ち") return "素材待ち";
   if (task.status === "Codex投入待ち" || task.codexReady) return "Codex投入待ち";
   if (task.status === "確認待ち") return "確認待ち";
@@ -278,12 +345,12 @@ function getWaitingText(task) {
   return task.status;
 }
 
-function getSavedMemo(agentId) {
+function getSavedMemo(agentId, fallback = "") {
   try {
     const data = JSON.parse(localStorage.getItem(MEMO_STORAGE_KEY) || "{}");
-    return data[agentId] || "";
+    return data[agentId] || fallback || "";
   } catch {
-    return "";
+    return fallback || "";
   }
 }
 
@@ -328,6 +395,10 @@ function getActiveFloor() {
 
 function getActiveAgent() {
   return state.agents.find((agent) => agent.id === state.activeAgentId) || state.agents[0];
+}
+
+function findAgentIdByName(name) {
+  return state.agents.find((agent) => agent.name === name)?.id || "";
 }
 
 function getAgentFloorId(agent) {
