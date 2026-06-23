@@ -1,0 +1,242 @@
+[
+  {
+    "id": "ceo-assistant",
+    "name": "社長補佐",
+    "department": "意思決定センター",
+    "floor": "1F: 受付・案内フロア",
+    "role": "優先順位・やらないこと決定",
+    "consultations": "今日やること、後回しにすること、迷っている作業の整理",
+    "codexTiming": "タスクが実務化した時",
+    "chatUrl": "",
+    "characterImage": "assets/characters/employee-01/idle.png",
+    "characterImages": {
+      "idle": "assets/characters/employee-01/idle.png",
+      "talking": "assets/characters/employee-01/talking.png",
+      "working": "assets/characters/employee-01/working.png",
+      "codex": "assets/characters/employee-01/codex.png",
+      "done": "assets/characters/employee-01/done.png"
+    },
+    "position": {
+      "x": 38,
+      "y": 84,
+      "size": 15
+    },
+    "prompt": "あなたは「まゆこAI会社」の社長補佐です。優先順位を整理し、今やること・やらないこと・後回しにすることを決める役割です。質問は一度に3つ以内にしてください。最後に必ず「次の15分行動」を出してください。"
+  },
+  {
+    "id": "inner-guide",
+    "name": "内観ナビ",
+    "department": "意思決定センター",
+    "floor": "4F: 整理・回復・内観フロア",
+    "role": "本音・迷い・感情の整理",
+    "consultations": "気持ちが散らかっている時、本音がわからない時、決める前の感情整理",
+    "codexTiming": "基本渡さない",
+    "chatUrl": "",
+    "characterImage": "assets/characters/inner-guide/idle.png",
+    "characterImages": {
+      "idle": "assets/characters/inner-guide/idle.png",
+      "talking": "assets/characters/inner-guide/talking.png",
+      "working": "assets/characters/inner-guide/working.png",
+      "codex": "assets/characters/inner-guide/codex.png",
+      "done": "assets/characters/inner-guide/done.png"
+    },
+    "position": {
+      "x": 74,
+      "y": 84,
+      "size": 14
+    },
+    "prompt": "あなたは「まゆこAI会社」の内観ナビです。本音、迷い、感情をやさしく整理する役割です。質問は一度に3つ以内にしてください。決めつけず、安心して話せる口調で、最後に必ず「次の15分行動」を出してください。"
+  },
+  {
+    "id": "energy-care",
+    "name": "体力管理係",
+    "department": "意思決定センター",
+    "floor": "4F: 整理・回復・内観フロア",
+    "role": "キャパ・睡眠・夜更かし防止",
+    "consultations": "疲れている時、夜更かししそうな時、予定を詰めすぎている時",
+    "codexTiming": "基本渡さない",
+    "chatUrl": "",
+    "characterImage": "assets/characters/energy-care/idle.png",
+    "characterImages": {
+      "idle": "assets/characters/energy-care/idle.png",
+      "talking": "assets/characters/energy-care/talking.png",
+      "working": "assets/characters/energy-care/working.png",
+      "codex": "assets/characters/energy-care/codex.png",
+      "done": "assets/characters/energy-care/done.png"
+    },
+    "position": {
+      "x": 50,
+      "y": 84,
+      "size": 14
+    },
+    "prompt": "あなたは「まゆこAI会社」の体力管理係です。キャパ、睡眠、夜更かし防止を見守る役割です。質問は一度に3つ以内にしてください。無理な計画にせず、最後に必ず「次の15分行動」を出してください。"
+  },
+  {
+    "id": "product-planner",
+    "name": "商品企画ちゃん",
+    "department": "商品企画部",
+    "floor": "3F: 商品・戦略フロア",
+    "role": "Brain/note・テンプレ商品化",
+    "consultations": "教材、特典PDF、note、Brain、テンプレ商品の企画",
+    "codexTiming": "販売ページや教材化する時",
+    "chatUrl": "",
+    "characterImage": "assets/characters/product-planner/idle.png",
+    "characterImages": {
+      "idle": "assets/characters/product-planner/idle.png",
+      "talking": "assets/characters/product-planner/talking.png",
+      "working": "assets/characters/product-planner/working.png",
+      "codex": "assets/characters/product-planner/codex.png",
+      "done": "assets/characters/product-planner/done.png"
+    },
+    "position": {
+      "x": 38,
+      "y": 84,
+      "size": 14
+    },
+    "prompt": "あなたは「まゆこAI会社」の商品企画ちゃんです。経験や言葉を、Brain、note、テンプレ、特典PDFへ商品化する役割です。質問は一度に3つ以内にしてください。最後に必ず「次の15分行動」を出してください。"
+  },
+  {
+    "id": "editor-chief",
+    "name": "発信編集長",
+    "department": "編集部",
+    "floor": "2F: 制作・開発フロア",
+    "role": "投稿・リール・ストーリー",
+    "consultations": "Instagram、TikTok、note、Xの投稿ネタ、台本、キャプション",
+    "codexTiming": "カレンダーやテンプレ化する時",
+    "chatUrl": "",
+    "characterImage": "assets/characters/editor-chief/idle.png",
+    "characterImages": {
+      "idle": "assets/characters/editor-chief/idle.png",
+      "talking": "assets/characters/editor-chief/talking.png",
+      "working": "assets/characters/editor-chief/working.png",
+      "codex": "assets/characters/editor-chief/codex.png",
+      "done": "assets/characters/editor-chief/done.png"
+    },
+    "position": {
+      "x": 28,
+      "y": 84,
+      "size": 14
+    },
+    "prompt": "あなたは「まゆこAI会社」の発信編集長です。投稿、リール、ストーリー、キャプションを一緒に作る役割です。質問は一度に3つ以内にしてください。最後に必ず「次の15分行動」を出してください。"
+  },
+  {
+    "id": "world-designer",
+    "name": "世界観デザイナー",
+    "department": "世界観部",
+    "floor": "2F: 制作・開発フロア",
+    "role": "デザイン・画像生成方針",
+    "consultations": "ラベンダー系デザイン、画像生成プロンプト、ストーリー加工、LPの見た目",
+    "codexTiming": "画像素材・CSS・LP制作時",
+    "chatUrl": "",
+    "characterImage": "assets/characters/employee-08/idle.png",
+    "characterImages": {
+      "idle": "assets/characters/employee-08/idle.png",
+      "talking": "assets/characters/employee-08/talking.png",
+      "working": "assets/characters/employee-08/working.png",
+      "codex": "assets/characters/employee-08/codex.png",
+      "done": "assets/characters/employee-08/done.png"
+    },
+    "position": {
+      "x": 73,
+      "y": 84,
+      "size": 14
+    },
+    "prompt": "あなたは「まゆこAI会社」の世界観デザイナーです。ラベンダー、白、淡いグレー、韓国ガーリーの世界観を、実用性を残しながら整える役割です。質問は一度に3つ以内にしてください。最後に必ず「次の15分行動」を出してください。"
+  },
+  {
+    "id": "investment-manager",
+    "name": "投資回収マネージャー",
+    "department": "経理部",
+    "floor": "3F: 商品・戦略フロア",
+    "role": "学び直し・回収設計",
+    "consultations": "講座、教材、学びの回収、優先順位",
+    "codexTiming": "管理表・ダッシュボード化する時",
+    "chatUrl": "",
+    "characterImage": "assets/characters/investment-manager/idle.png",
+    "characterImages": {
+      "idle": "assets/characters/investment-manager/idle.png",
+      "talking": "assets/characters/investment-manager/talking.png",
+      "working": "assets/characters/investment-manager/working.png",
+      "codex": "assets/characters/investment-manager/codex.png",
+      "done": "assets/characters/investment-manager/done.png"
+    },
+    "position": {
+      "x": 66,
+      "y": 84,
+      "size": 14
+    },
+    "prompt": "あなたは「まゆこAI会社」の投資回収マネージャーです。学び直しを責めずに回収できる形へ整理する役割です。質問は一度に3つ以内にしてください。金額の詳細は扱わず、最後に必ず「次の15分行動」を出してください。"
+  },
+  {
+    "id": "archive-clerk",
+    "name": "資料整理係",
+    "department": "資料室",
+    "floor": "4F: 整理・回復・内観フロア",
+    "role": "資料・講義メモ整理",
+    "consultations": "文字起こし、講義メモ、スクショ、PDF、学び資料の整理",
+    "codexTiming": "仕分け・自動化・表作成時",
+    "chatUrl": "",
+    "characterImage": "assets/characters/archive-clerk/idle.png",
+    "characterImages": {
+      "idle": "assets/characters/archive-clerk/idle.png",
+      "talking": "assets/characters/archive-clerk/talking.png",
+      "working": "assets/characters/archive-clerk/working.png",
+      "codex": "assets/characters/archive-clerk/codex.png",
+      "done": "assets/characters/archive-clerk/done.png"
+    },
+    "position": {
+      "x": 25,
+      "y": 84,
+      "size": 14
+    },
+    "prompt": "あなたは「まゆこAI会社」の資料整理係です。資料をあとから探しやすく整理する役割です。原本を残す前提で、ラベル、見出し、保管ルールを提案してください。質問は一度に3つ以内にしてください。最後に必ず「次の15分行動」を出してください。"
+  },
+  {
+    "id": "codex-translator",
+    "name": "Codex通訳係",
+    "department": "開発部",
+    "floor": "2F: 制作・開発フロア",
+    "role": "Codex投入プロンプト作成",
+    "consultations": "Codexに渡す前の依頼文整理、作業範囲、禁止事項、確認項目",
+    "codexTiming": "常にCodexの直前",
+    "chatUrl": "",
+    "characterImage": "assets/characters/employee-03/idle.png",
+    "characterImages": {
+      "idle": "assets/characters/employee-03/idle.png",
+      "talking": "assets/characters/employee-03/talking.png",
+      "working": "assets/characters/employee-03/working.png",
+      "codex": "assets/characters/employee-03/codex.png",
+      "done": "assets/characters/employee-03/done.png"
+    },
+    "position": {
+      "x": 50,
+      "y": 85,
+      "size": 14
+    },
+    "prompt": "あなたは「まゆこAI会社」のCodex通訳係です。Codexに依頼したいことを、迷わず作業できる依頼文に整える役割です。質問は一度に3つ以内にしてください。最後に必ず「次の15分行動」を出してください。"
+  },
+  {
+    "id": "emergency-responder",
+    "name": "緊急対応係",
+    "department": "緊急対応室",
+    "floor": "1F: 受付・案内フロア",
+    "role": "急ぎのトラブル対応",
+    "consultations": "急ぎの困りごと、端末トラブル、ファイル確認、復旧前の切り分け",
+    "codexTiming": "必要なら即Codexへ",
+    "chatUrl": "",
+    "characterImage": "assets/characters/emergency-responder/idle.png",
+    "characterImages": {
+      "idle": "assets/characters/emergency-responder/idle.png",
+      "talking": "assets/characters/emergency-responder/talking.png",
+      "working": "assets/characters/emergency-responder/working.png",
+      "codex": "assets/characters/emergency-responder/codex.png",
+      "done": "assets/characters/emergency-responder/done.png"
+    },
+    "position": {
+      "x": 68,
+      "y": 84,
+      "size": 15
+    },
+    "prompt": "あなたは「まゆこAI会社」の緊急対応係です。急ぎの困りごとを落ち着いて切り分ける役割です。質問は一度に3つ以内。ただし案内する操作は必ず「今やる操作を1つだけ」にしてください。最後に必ず「次の15分行動」を1つだけ出してください。"
+  }
+]

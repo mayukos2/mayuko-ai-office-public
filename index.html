@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>まゆこAI会社</title>
+  <link rel="stylesheet" href="style.css?v=20260623-public-strategy1">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Mayuko AI Office</p>
+        <h1>まゆこAI会社</h1>
+      </div>
+      <div class="status-note" id="dataSourceNote">公開用データを読み込み中</div>
+    </header>
+
+    <section class="kpi-row" aria-label="進捗サマリー">
+      <article>
+        <span>AI社員</span>
+        <strong id="agentCount">0</strong>
+      </article>
+      <article>
+        <span>相談中</span>
+        <strong id="consultingCount">0</strong>
+      </article>
+      <article>
+        <span>Codex待ち</span>
+        <strong id="codexQueueCount">0</strong>
+      </article>
+      <article>
+        <span>完了</span>
+        <strong id="doneCount">0</strong>
+      </article>
+    </section>
+
+    <section class="office-layout" aria-label="AIオフィス">
+      <div class="map-panel">
+        <div class="floor-tabs" id="floorTabs"></div>
+        <div class="office-stage" id="officeStage"></div>
+      </div>
+
+      <aside class="detail-panel" id="agentDetail" aria-label="AI社員詳細">
+        AI社員を選ぶと進捗カードが表示されます。
+      </aside>
+    </section>
+
+    <section class="task-panel" aria-label="公開用タスク一覧">
+      <div class="section-title">
+        <p class="eyebrow">Progress</p>
+        <h2>公開用の進捗</h2>
+      </div>
+      <div class="filters">
+        <button class="filter-btn is-active" type="button" data-filter="all">すべて</button>
+        <button class="filter-btn" type="button" data-filter="Codex投入待ち">Codex待ち</button>
+        <button class="filter-btn" type="button" data-filter="相談中">相談中</button>
+        <button class="filter-btn" type="button" data-filter="完了">完了</button>
+      </div>
+      <div class="task-list" id="taskList"></div>
+    </section>
+  </main>
+
+  <script src="app.js?v=20260623-public-strategy1"></script>
+</body>
+</html>

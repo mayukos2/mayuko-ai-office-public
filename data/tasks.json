@@ -1,0 +1,92 @@
+[
+  {
+    "id": "public-task-001",
+    "title": "AI社員チャットURL整備",
+    "ownerAgentId": "codex-translator",
+    "status": "Codex投入待ち",
+    "codexReady": true,
+    "summary": "公開用に載せてよいチャットURLだけを整理する。",
+    "nextAction": "公開してよいURLだけを確認する",
+    "lastUpdated": "公開用初期データ"
+  },
+  {
+    "id": "public-task-002",
+    "title": "投稿ネタ整理",
+    "ownerAgentId": "editor-chief",
+    "status": "相談中",
+    "codexReady": false,
+    "summary": "SNSに使える投稿テーマを安全な粒度で整理する。",
+    "nextAction": "次に出す投稿候補を3つに絞る",
+    "lastUpdated": "公開用初期データ"
+  },
+  {
+    "id": "public-task-003",
+    "title": "Brain/note販売設計",
+    "ownerAgentId": "product-planner",
+    "status": "素材待ち",
+    "codexReady": false,
+    "summary": "教材やテンプレにできる候補を商品企画として整理する。",
+    "nextAction": "販売ページに使う見出し候補を出す",
+    "lastUpdated": "公開用初期データ"
+  },
+  {
+    "id": "public-task-004",
+    "title": "学びメモ整理",
+    "ownerAgentId": "archive-clerk",
+    "status": "Codex投入待ち",
+    "codexReady": true,
+    "summary": "原本を残しながら、あとで探しやすい分類と保管ルールを整える。",
+    "nextAction": "保存ルールを短くまとめる",
+    "lastUpdated": "公開用初期データ"
+  },
+  {
+    "id": "public-task-005",
+    "title": "世界観プロンプト整備",
+    "ownerAgentId": "world-designer",
+    "status": "実務中",
+    "codexReady": false,
+    "summary": "ラベンダー、白、淡いグレー、韓国ガーリー寄りの画像方針を整える。",
+    "nextAction": "スマホで使う画像プロンプトを3本作る",
+    "lastUpdated": "公開用初期データ"
+  },
+  {
+    "id": "public-task-006",
+    "title": "今週の優先順位整理",
+    "ownerAgentId": "ceo-assistant",
+    "status": "確認待ち",
+    "codexReady": false,
+    "summary": "やることと、今はやらないことを整理する。",
+    "nextAction": "今日やることを1つに絞る",
+    "lastUpdated": "公開用初期データ"
+  },
+  {
+    "id": "public-task-007",
+    "title": "学びAの優先順位整理",
+    "ownerAgentId": "investment-manager",
+    "status": "未着手",
+    "codexReady": false,
+    "summary": "金額の詳細を出さずに、回収したい学びの優先順位を整理する。",
+    "nextAction": "今月使う学びを1つ決める",
+    "lastUpdated": "公開用初期データ"
+  },
+  {
+    "id": "public-task-008",
+    "title": "緊急時の見直しメモ",
+    "ownerAgentId": "emergency-responder",
+    "status": "保留",
+    "codexReady": false,
+    "summary": "困った時の確認順だけを安全な粒度で整理する。",
+    "nextAction": "今やる操作を1つだけに絞るテンプレを作る",
+    "lastUpdated": "公開用初期データ"
+  },
+  {
+    "id": "public-task-009",
+    "title": "日記保存フロー検討",
+    "ownerAgentId": "archive-clerk",
+    "status": "完了",
+    "codexReady": false,
+    "summary": "公開しない情報の基準を整理する。",
+    "nextAction": "安全な表示ルールを残す",
+    "lastUpdated": "公開用初期データ"
+  }
+]
