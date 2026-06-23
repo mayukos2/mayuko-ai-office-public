@@ -1,5 +1,5 @@
 const TASK_STATUSES = ["未着手", "相談中", "素材待ち", "Codex投入待ち", "実務中", "確認待ち", "完了", "保留"];
-const ASSET_VERSION = "20260623-public-task-priority1";
+const ASSET_VERSION = "20260623-public-task-cleanup1";
 const MEMO_STORAGE_KEY = "mayuko-ai-office.public.memo.v1";
 const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzpyQd8AlufvsC0zy4E5g8A47dQWYrbqpn8XZyjoAFLxE6Pjz-xY99WOyDOO4SEZjNh/exec";
 const GAS_STATUS_ENDPOINT = GAS_ENDPOINT;
@@ -72,7 +72,7 @@ async function init() {
 
   const syncedTasks = await loadSyncedTasks(tasks);
   state.agents = agents;
-  state.tasks = syncedTasks.tasks;
+  state.tasks = normalizeDisplayTasks(syncedTasks.tasks);
   state.activeAgentId = state.agents[0]?.id || "";
   state.activeFloorId = getAgentFloorId(state.agents[0]) || FLOORS[0].id;
   els.dataSourceNote.textContent = syncedTasks.source === "gas" ? "スプシ進捗表示中" : "公開用データ表示中";
@@ -99,7 +99,7 @@ async function loadSyncedTasks(fallbackTasks) {
 
   try {
     const rows = await loadStatusRowsByJsonp(GAS_STATUS_ENDPOINT);
-    const tasks = rows.map(statusRowToTask).filter(Boolean).sort(compareTasks);
+    const tasks = normalizeDisplayTasks(rows.map(statusRowToTask).filter(Boolean)).sort(compareTasks);
     return { source: tasks.length ? "gas" : "json", tasks: tasks.length ? tasks : fallbackTasks };
   } catch {
     return { source: "json", tasks: fallbackTasks };
@@ -156,7 +156,8 @@ function statusRowToTask(row) {
     waitingFor: row["何待ち"] || "",
     memo: row["私のメモ"] || "",
     nextAction: row["何待ち"] || "進捗を確認する",
-    lastUpdated: row["最終更新"] || row["最終メモ日時"] || ""
+    lastUpdated: row["最終更新"] || row["最終メモ日時"] || "",
+    isMeta: isMetaTask(taskTitle)
   };
 }
 
@@ -252,7 +253,6 @@ function renderDetail() {
   const stats = getAgentStats(agent.id);
   const tasks = getAgentTasks(agent.id);
   const mainTask = getPrimaryTask(tasks);
-  const chatLabel = agent.chatUrl ? "チャットを開く" : "チャットURL未設定";
 
   els.agentDetail.innerHTML = `
     <div class="detail-head">
@@ -283,14 +283,16 @@ function renderDetail() {
       </div>
       <div>
         <span>最終更新</span>
-        <strong>${escapeHtml(mainTask?.lastUpdated || "未更新")}</strong>
+        <strong>${escapeHtml(formatDate(mainTask?.lastUpdated) || "未更新")}</strong>
       </div>
     </section>
     ${renderAgentProgressList(tasks)}
-    <div class="chat-row">
-      <input type="text" readonly value="${escapeHtml(agent.chatUrl || "未設定")}">
-      <button type="button" ${agent.chatUrl ? "" : "disabled"} id="openChatButton">${chatLabel}</button>
-    </div>
+    ${agent.chatUrl ? `
+      <div class="chat-row">
+        <input type="text" readonly value="${escapeHtml(agent.chatUrl)}">
+        <button type="button" id="openChatButton">チャットを開く</button>
+      </div>
+    ` : ""}
   `;
 
   const openButton = document.querySelector("#openChatButton");
@@ -306,7 +308,7 @@ function renderDetail() {
 }
 
 function renderTasks() {
-  const tasks = state.tasks.filter((task) => state.taskFilter === "all" || task.status === state.taskFilter);
+  const tasks = state.tasks.filter((task) => !shouldHideTask(task) && (state.taskFilter === "all" || task.status === state.taskFilter));
   els.taskList.innerHTML = tasks.map((task) => {
     const agent = state.agents.find((item) => item.id === task.ownerAgentId);
     return `
@@ -323,7 +325,7 @@ function renderTasks() {
 }
 
 function getAgentTasks(agentId) {
-  return state.tasks.filter((task) => task.ownerAgentId === agentId).sort(compareTasks);
+  return state.tasks.filter((task) => task.ownerAgentId === agentId && !shouldHideTask(task)).sort(compareTasks);
 }
 
 function getPrimaryTask(tasks) {
@@ -378,6 +380,67 @@ function saveMemo(agentId, memo) {
   })();
   data[agentId] = memo;
   localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(data));
+}
+
+function normalizeDisplayTasks(tasks) {
+  const grouped = new Map();
+
+  tasks.forEach((task) => {
+    const normalizedTask = {
+      ...task,
+      taskKey: task.taskKey || slugTask(task.title || "overview"),
+      isMeta: Boolean(task.isMeta) || isMetaTask(task.title)
+    };
+    const groupKey = getTaskGroupKey(normalizedTask);
+    const current = grouped.get(groupKey);
+    if (!current || compareTasks(normalizedTask, current) < 0) {
+      grouped.set(groupKey, normalizedTask);
+    }
+  });
+
+  return Array.from(grouped.values()).sort(compareTasks);
+}
+
+function getTaskGroupKey(task) {
+  const text = normalizeTaskText(`${task.taskKey || ""} ${task.title || ""} ${task.summary || ""}`);
+  const isFamilyAppTask =
+    task.ownerAgentId === "codex-translator" &&
+    text.includes("家族") &&
+    text.includes("公開準備") &&
+    (text.includes("小型webアプリ") || text.includes("音声送信アプリ"));
+
+  if (isFamilyAppTask) {
+    return `${task.ownerAgentId}:family-voice-app-public`;
+  }
+
+  return `${task.ownerAgentId}:${task.taskKey || slugTask(task.title || "overview")}`;
+}
+
+function normalizeTaskText(value) {
+  return String(value || "").toLowerCase().replace(/\s/g, "");
+}
+
+function shouldHideTask(task) {
+  return Boolean(task?.isMeta);
+}
+
+function isMetaTask(title) {
+  return /GAS進捗表示|反映確認|公開ページ進捗表示|重複整理/.test(String(title || ""));
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toLocaleDateString("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).replaceAll("/", "-");
+  }
+
+  const match = String(value).match(/\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : String(value);
 }
 
 async function handleMemoSubmit(agent, task, memo) {
