@@ -1,5 +1,5 @@
 const TASK_STATUSES = ["未着手", "相談中", "素材待ち", "Codex投入待ち", "実務中", "確認待ち", "完了", "保留"];
-const ASSET_VERSION = "20260623-public-task-scope1";
+const ASSET_VERSION = "20260623-public-task-priority1";
 const MEMO_STORAGE_KEY = "mayuko-ai-office.public.memo.v1";
 const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzpyQd8AlufvsC0zy4E5g8A47dQWYrbqpn8XZyjoAFLxE6Pjz-xY99WOyDOO4SEZjNh/exec";
 const GAS_STATUS_ENDPOINT = GAS_ENDPOINT;
@@ -250,8 +250,8 @@ function renderDetail() {
   const agent = getActiveAgent();
   if (!agent) return;
   const stats = getAgentStats(agent.id);
-  const tasks = state.tasks.filter((task) => task.ownerAgentId === agent.id);
-  const mainTask = tasks[0];
+  const tasks = getAgentTasks(agent.id);
+  const mainTask = getPrimaryTask(tasks);
   const chatLabel = agent.chatUrl ? "チャットを開く" : "チャットURL未設定";
 
   els.agentDetail.innerHTML = `
@@ -320,6 +320,14 @@ function renderTasks() {
       </article>
     `;
   }).join("") || `<p class="empty">該当する進捗はありません。</p>`;
+}
+
+function getAgentTasks(agentId) {
+  return state.tasks.filter((task) => task.ownerAgentId === agentId).sort(compareTasks);
+}
+
+function getPrimaryTask(tasks) {
+  return tasks.find((task) => task.taskKey !== "overview" && task.title !== "進捗確認") || tasks[0];
 }
 
 function renderAgentProgressList(tasks) {
@@ -466,7 +474,7 @@ function getVisualState(stats) {
 }
 
 function getAgentStats(agentId) {
-  const tasks = state.tasks.filter((task) => task.ownerAgentId === agentId);
+  const tasks = getAgentTasks(agentId).filter((task) => task.taskKey !== "overview" || task.status !== "未着手");
   return {
     consulting: tasks.filter((task) => task.status === "相談中").length,
     codex: tasks.filter((task) => task.status === "Codex投入待ち" || task.codexReady).length,
