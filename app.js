@@ -1,7 +1,7 @@
 const TASK_STATUSES = ["未着手", "相談中", "素材待ち", "Codex投入待ち", "実務中", "確認待ち", "完了", "保留"];
-const ASSET_VERSION = "20260623-public-gas-ready2";
+const ASSET_VERSION = "20260623-public-gas-live1";
 const MEMO_STORAGE_KEY = "mayuko-ai-office.public.memo.v1";
-const GAS_ENDPOINT = "";
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzpyQd8AlufvsC0zy4E5g8A47dQWYrbqpn8XZyjoAFLxE6Pjz-xY99WOyDOO4SEZjNh/exec";
 const GAS_STATUS_ENDPOINT = GAS_ENDPOINT;
 const CHARACTER_PLACEHOLDER = "assets/characters/employee-placeholder.png";
 
