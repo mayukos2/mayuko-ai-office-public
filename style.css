@@ -237,6 +237,7 @@ h1 {
 
 .name-label {
   max-width: 112px;
+  margin-top: -18px;
   padding: 5px 8px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -246,6 +247,8 @@ h1 {
   font-weight: 900;
   line-height: 1.15;
   box-shadow: 0 6px 12px rgba(72, 54, 102, 0.08);
+  position: relative;
+  z-index: 2;
 }
 
 .speech,
@@ -390,6 +393,71 @@ h1 {
   margin: 10px 0 0;
   color: var(--muted);
   line-height: 1.65;
+}
+
+.progress-card {
+  display: grid;
+  gap: 9px;
+  margin: 12px 0;
+}
+
+.progress-card div {
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.progress-card span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--lavender-600);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.progress-card strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.agent-progress-list {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+.agent-progress-list article {
+  padding: 10px;
+  border: 1px solid rgba(208, 197, 225, 0.75);
+  border-radius: 12px;
+  background: var(--lavender-50);
+}
+
+.agent-progress-list span {
+  display: inline-flex;
+  margin-bottom: 5px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--lavender-600);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.agent-progress-list strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.agent-progress-list p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
 }
 
 .chat-row {

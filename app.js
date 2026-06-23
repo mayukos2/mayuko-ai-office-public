@@ -1,5 +1,5 @@
 const TASK_STATUSES = ["未着手", "相談中", "素材待ち", "Codex投入待ち", "実務中", "確認待ち", "完了", "保留"];
-const ASSET_VERSION = "20260623-public-strategy1";
+const ASSET_VERSION = "20260623-public-progress1";
 const CHARACTER_PLACEHOLDER = "assets/characters/employee-placeholder.png";
 
 const FLOORS = [
@@ -177,6 +177,7 @@ function renderDetail() {
   if (!agent) return;
   const stats = getAgentStats(agent.id);
   const tasks = state.tasks.filter((task) => task.ownerAgentId === agent.id);
+  const mainTask = tasks[0];
   const chatLabel = agent.chatUrl ? "チャットを開く" : "チャットURL未設定";
 
   els.agentDetail.innerHTML = `
@@ -187,21 +188,30 @@ function renderDetail() {
       </div>
       <span class="status-chip">${escapeHtml(getMainStatus(tasks))}</span>
     </div>
-    <p class="role">${escapeHtml(agent.role)}</p>
     <div class="mini-stats">
       <span>相談中 ${stats.consulting}</span>
       <span>Codex待ち ${stats.codex}</span>
       <span>完了 ${stats.done}</span>
     </div>
-    <dl class="detail-list">
-      <div><dt>担当する相談</dt><dd>${escapeHtml(agent.consultations)}</dd></div>
-      <div><dt>Codexに渡すタイミング</dt><dd>${escapeHtml(agent.codexTiming)}</dd></div>
-      <div><dt>次の一手</dt><dd>${escapeHtml(tasks[0]?.nextAction || "次の相談で決める")}</dd></div>
-    </dl>
-    <details class="prompt-details">
-      <summary>初期プロンプト</summary>
-      <p>${escapeHtml(agent.prompt)}</p>
-    </details>
+    <section class="progress-card" aria-label="現在の進捗">
+      <div>
+        <span>今どこまで</span>
+        <strong>${escapeHtml(mainTask?.summary || "今の進捗はまだ登録されていません。")}</strong>
+      </div>
+      <div>
+        <span>何待ち</span>
+        <strong>${escapeHtml(getWaitingText(mainTask))}</strong>
+      </div>
+      <div>
+        <span>次の一手</span>
+        <strong>${escapeHtml(mainTask?.nextAction || "次の相談で決める")}</strong>
+      </div>
+      <div>
+        <span>最終更新</span>
+        <strong>${escapeHtml(mainTask?.lastUpdated || "未更新")}</strong>
+      </div>
+    </section>
+    ${renderAgentProgressList(tasks)}
     <div class="chat-row">
       <input type="text" readonly value="${escapeHtml(agent.chatUrl || "未設定")}">
       <button type="button" ${agent.chatUrl ? "" : "disabled"} id="openChatButton">${chatLabel}</button>
@@ -229,6 +239,34 @@ function renderTasks() {
       </article>
     `;
   }).join("") || `<p class="empty">該当する進捗はありません。</p>`;
+}
+
+function renderAgentProgressList(tasks) {
+  if (tasks.length <= 1) return "";
+  return `
+    <div class="agent-progress-list">
+      ${tasks.map((task) => `
+        <article>
+          <span>${escapeHtml(task.status)}</span>
+          <strong>${escapeHtml(task.title)}</strong>
+          <p>${escapeHtml(task.summary)}</p>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function getWaitingText(task) {
+  if (!task) return "報告待ち";
+  if (task.status === "素材待ち") return "素材待ち";
+  if (task.status === "Codex投入待ち" || task.codexReady) return "Codex投入待ち";
+  if (task.status === "確認待ち") return "確認待ち";
+  if (task.status === "未着手") return "着手待ち";
+  if (task.status === "相談中") return "相談の続き待ち";
+  if (task.status === "実務中") return "作業中";
+  if (task.status === "完了") return "完了";
+  if (task.status === "保留") return "再開待ち";
+  return task.status;
 }
 
 function getActiveFloor() {
