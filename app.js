@@ -1,8 +1,10 @@
 const TASK_STATUSES = ["未着手", "相談中", "素材待ち", "Codex投入待ち", "実務中", "確認待ち", "完了", "保留"];
-const ASSET_VERSION = "20260623-public-gas-live1";
+const ASSET_VERSION = "20260623-public-project-scope1";
 const MEMO_STORAGE_KEY = "mayuko-ai-office.public.memo.v1";
 const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzpyQd8AlufvsC0zy4E5g8A47dQWYrbqpn8XZyjoAFLxE6Pjz-xY99WOyDOO4SEZjNh/exec";
 const GAS_STATUS_ENDPOINT = GAS_ENDPOINT;
+const PROJECT_ID = "mayuko-ai-office";
+const PROJECT_NAME = "まゆこAIオフィス";
 const CHARACTER_PLACEHOLDER = "assets/characters/employee-placeholder.png";
 
 const FLOORS = [
@@ -130,12 +132,13 @@ function loadStatusRowsByJsonp(endpoint) {
       script.remove();
     }
 
-    script.src = `${endpoint}${separator}callback=${encodeURIComponent(callbackName)}`;
+    script.src = `${endpoint}${separator}projectId=${encodeURIComponent(PROJECT_ID)}&callback=${encodeURIComponent(callbackName)}`;
     document.head.appendChild(script);
   });
 }
 
 function statusRowToTask(row) {
+  if (row.projectId && row.projectId !== PROJECT_ID) return null;
   const agentId = row.agentId || findAgentIdByName(row["担当AI"]);
   if (!agentId) return null;
   const status = row["状態"] || "未着手";
@@ -380,6 +383,8 @@ async function handleMemoSubmit(agent, task, memo) {
     body: JSON.stringify({
       agentId: agent.id,
       agentName: agent.name,
+      projectId: PROJECT_ID,
+      projectName: PROJECT_NAME,
       taskTitle: task?.title || "",
       status: task?.status || "",
       memo,

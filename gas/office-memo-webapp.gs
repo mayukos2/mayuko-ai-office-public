@@ -1,9 +1,13 @@
 const EVENTS_SHEET_NAME = 'office_events';
 const STATUS_SHEET_NAME = 'office_status';
+const DEFAULT_PROJECT_ID = 'mayuko-ai-office';
+const DEFAULT_PROJECT_NAME = 'まゆこAIオフィス';
 
 const EVENT_HEADERS = [
   '受信日時',
   'source',
+  'projectId',
+  'プロジェクト名',
   '担当AI',
   'agentId',
   '状態',
@@ -17,6 +21,8 @@ const EVENT_HEADERS = [
 ];
 
 const STATUS_HEADERS = [
+  'projectId',
+  'プロジェクト名',
   'agentId',
   '担当AI',
   '状態',
@@ -46,14 +52,16 @@ const AGENTS = [
 function setupOfficeSheets() {
   getEventsSheet();
   const statusSheet = getStatusSheet();
-  seedStatusRows(statusSheet);
+  migrateDefaultProject(statusSheet);
+  seedStatusRows(statusSheet, DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME);
   installFormSubmitTrigger();
 }
 
 function doGet(e) {
+  const projectId = safeText(e && e.parameter && e.parameter.projectId, 120);
   const data = {
     ok: true,
-    status: readStatusRows()
+    status: readStatusRows(projectId)
   };
   const callback = e && e.parameter && e.parameter.callback;
   if (callback) {
@@ -84,6 +92,8 @@ function normalizePublicMemo(payload) {
   const agentId = safeText(payload.agentId, 80) || findAgentId(agentName);
   return {
     source: 'public_memo',
+    projectId: safeText(payload.projectId, 120) || DEFAULT_PROJECT_ID,
+    projectName: safeText(payload.projectName, 160) || DEFAULT_PROJECT_NAME,
     agentName: agentName || findAgentName(agentId),
     agentId,
     status: safeText(payload.status, 40),
@@ -99,6 +109,8 @@ function normalizePublicMemo(payload) {
 
 function normalizeFormReport(e) {
   const named = e && e.namedValues ? e.namedValues : {};
+  const projectName = firstNamed(named, ['プロジェクト名', '案件名', 'プロジェクト', 'projectName']) || DEFAULT_PROJECT_NAME;
+  const projectId = firstNamed(named, ['プロジェクトID', 'projectId']) || slugProject(projectName);
   const agentName = firstNamed(named, ['担当AI', 'AI社員', '担当']);
   const status = firstNamed(named, ['状態', 'ステータス']);
   const taskTitle = firstNamed(named, ['タスク名', '今お願いされていること', 'タスク']);
@@ -110,6 +122,8 @@ function normalizeFormReport(e) {
 
   return {
     source: 'chatgpt_report',
+    projectId,
+    projectName,
     agentName,
     agentId: findAgentId(agentName),
     status,
@@ -124,86 +138,89 @@ function normalizeFormReport(e) {
 }
 
 function appendEvent(event) {
-  getEventsSheet().appendRow([
-    new Date(),
-    event.source,
-    event.agentName,
-    event.agentId,
-    event.status,
-    event.taskTitle,
-    event.nowWhere,
-    event.waitingFor,
-    event.memo,
-    event.codex,
-    event.lastUpdated,
-    JSON.stringify(event.raw)
-  ]);
+  const sheet = getEventsSheet();
+  const headers = getHeaders(sheet, EVENT_HEADERS);
+  const row = headers.map((header) => eventValue(event, header));
+  sheet.appendRow(row);
 }
 
 function upsertStatus(event) {
   const sheet = getStatusSheet();
-  seedStatusRows(sheet);
-  const rows = sheet.getDataRange().getValues();
-  const headers = rows[0];
-  const idCol = headers.indexOf('agentId');
-  const nameCol = headers.indexOf('担当AI');
-  let rowIndex = -1;
+  const headers = getHeaders(sheet, STATUS_HEADERS);
+  migrateDefaultProject(sheet);
 
-  for (let i = 1; i < rows.length; i++) {
-    if ((event.agentId && rows[i][idCol] === event.agentId) || (event.agentName && rows[i][nameCol] === event.agentName)) {
-      rowIndex = i + 1;
-      break;
-    }
-  }
+  const rows = sheet.getDataRange().getValues();
+  const rowIndex = findStatusRowIndex(rows, headers, event);
 
   if (rowIndex === -1) {
-    sheet.appendRow(buildStatusRow(event));
+    sheet.appendRow(buildStatusRow(headers, event));
     return;
   }
 
-  const current = sheet.getRange(rowIndex, 1, 1, STATUS_HEADERS.length).getValues()[0];
-  const next = mergeStatusRow(current, event);
-  sheet.getRange(rowIndex, 1, 1, STATUS_HEADERS.length).setValues([next]);
+  const current = sheet.getRange(rowIndex, 1, 1, headers.length).getValues()[0];
+  const next = mergeStatusRow(current, headers, event);
+  sheet.getRange(rowIndex, 1, 1, headers.length).setValues([next]);
 }
 
-function mergeStatusRow(current, event) {
+function findStatusRowIndex(rows, headers, event) {
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const sameProject = getCell(row, headers, 'projectId') === event.projectId ||
+      (!getCell(row, headers, 'projectId') && event.projectId === DEFAULT_PROJECT_ID);
+    const sameAgent = (event.agentId && getCell(row, headers, 'agentId') === event.agentId) ||
+      (event.agentName && getCell(row, headers, '担当AI') === event.agentName);
+    if (sameProject && sameAgent) return i + 1;
+  }
+  return -1;
+}
+
+function mergeStatusRow(current, headers, event) {
   const row = current.slice();
-  setCell(row, 'agentId', event.agentId || getCell(row, 'agentId'));
-  setCell(row, '担当AI', event.agentName || getCell(row, '担当AI'));
-  setCell(row, 'lastSource', event.source);
+  setCell(row, headers, 'projectId', event.projectId || getCell(row, headers, 'projectId') || DEFAULT_PROJECT_ID);
+  setCell(row, headers, 'プロジェクト名', event.projectName || getCell(row, headers, 'プロジェクト名') || DEFAULT_PROJECT_NAME);
+  setCell(row, headers, 'agentId', event.agentId || getCell(row, headers, 'agentId'));
+  setCell(row, headers, '担当AI', event.agentName || getCell(row, headers, '担当AI'));
+  setCell(row, headers, 'lastSource', event.source);
 
   if (event.source === 'chatgpt_report') {
-    setCell(row, '状態', event.status || getCell(row, '状態'));
-    setCell(row, 'タスク名', event.taskTitle || getCell(row, 'タスク名'));
-    setCell(row, '今どこまで', event.nowWhere || getCell(row, '今どこまで'));
-    setCell(row, '何待ち', event.waitingFor || getCell(row, '何待ち'));
-    setCell(row, 'Codex投入', event.codex || getCell(row, 'Codex投入'));
-    setCell(row, '最終更新', event.lastUpdated || formatDate(new Date()));
+    setCell(row, headers, '状態', event.status || getCell(row, headers, '状態'));
+    setCell(row, headers, 'タスク名', event.taskTitle || getCell(row, headers, 'タスク名'));
+    setCell(row, headers, '今どこまで', event.nowWhere || getCell(row, headers, '今どこまで'));
+    setCell(row, headers, '何待ち', event.waitingFor || getCell(row, headers, '何待ち'));
+    setCell(row, headers, 'Codex投入', event.codex || getCell(row, headers, 'Codex投入'));
+    setCell(row, headers, '最終更新', event.lastUpdated || formatDate(new Date()));
   }
 
   if (event.source === 'public_memo') {
-    setCell(row, '私のメモ', event.memo || getCell(row, '私のメモ'));
-    setCell(row, '最終メモ日時', formatDateTime(new Date()));
+    setCell(row, headers, '私のメモ', event.memo || getCell(row, headers, '私のメモ'));
+    setCell(row, headers, '最終メモ日時', formatDateTime(new Date()));
   }
 
   return row;
 }
 
-function buildStatusRow(event) {
-  return STATUS_HEADERS.map((header) => {
-    if (header === 'agentId') return event.agentId;
-    if (header === '担当AI') return event.agentName;
-    if (header === '状態') return event.status;
-    if (header === 'タスク名') return event.taskTitle;
-    if (header === '今どこまで') return event.nowWhere;
-    if (header === '何待ち') return event.waitingFor;
-    if (header === '私のメモ') return event.memo;
-    if (header === 'Codex投入') return event.codex;
-    if (header === '最終更新') return event.lastUpdated || formatDate(new Date());
-    if (header === '最終メモ日時') return event.source === 'public_memo' ? formatDateTime(new Date()) : '';
-    if (header === 'lastSource') return event.source;
-    return '';
-  });
+function buildStatusRow(headers, event) {
+  return headers.map((header) => eventValue(event, header));
+}
+
+function eventValue(event, header) {
+  if (header === '受信日時') return new Date();
+  if (header === 'source') return event.source;
+  if (header === 'projectId') return event.projectId || DEFAULT_PROJECT_ID;
+  if (header === 'プロジェクト名') return event.projectName || DEFAULT_PROJECT_NAME;
+  if (header === 'agentId') return event.agentId;
+  if (header === '担当AI') return event.agentName;
+  if (header === '状態') return event.status;
+  if (header === 'タスク名') return event.taskTitle;
+  if (header === '今どこまで') return event.nowWhere;
+  if (header === '何待ち') return event.waitingFor;
+  if (header === '私のメモ') return event.memo;
+  if (header === 'Codex投入') return event.codex;
+  if (header === '最終更新') return event.lastUpdated || (event.source === 'chatgpt_report' ? formatDate(new Date()) : '');
+  if (header === '最終メモ日時') return event.source === 'public_memo' ? formatDateTime(new Date()) : '';
+  if (header === 'lastSource') return event.source;
+  if (header === 'raw') return JSON.stringify(event.raw);
+  return '';
 }
 
 function getEventsSheet() {
@@ -214,29 +231,82 @@ function getStatusSheet() {
   return getOrCreateSheet(STATUS_SHEET_NAME, STATUS_HEADERS);
 }
 
-function getOrCreateSheet(name, headers) {
+function getOrCreateSheet(name, requiredHeaders) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = spreadsheet.getSheetByName(name);
   if (!sheet) {
     sheet = spreadsheet.insertSheet(name);
   }
-
-  const firstRow = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
-  const hasHeaders = firstRow.some((value) => value);
-  if (!hasHeaders) {
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.setFrozenRows(1);
-  }
-
+  ensureHeaders(sheet, requiredHeaders);
   return sheet;
 }
 
-function seedStatusRows(sheet) {
+function ensureHeaders(sheet, requiredHeaders) {
+  const maxColumns = Math.max(sheet.getLastColumn(), requiredHeaders.length, 1);
+  let headers = sheet.getRange(1, 1, 1, maxColumns).getValues()[0].filter((value) => value);
+
+  if (!headers.length) {
+    sheet.getRange(1, 1, 1, requiredHeaders.length).setValues([requiredHeaders]);
+    sheet.setFrozenRows(1);
+    return;
+  }
+
+  const missing = requiredHeaders.filter((header) => !headers.includes(header));
+  if (missing.length) {
+    sheet.getRange(1, headers.length + 1, 1, missing.length).setValues([missing]);
+  }
+  sheet.setFrozenRows(1);
+}
+
+function getHeaders(sheet, requiredHeaders) {
+  ensureHeaders(sheet, requiredHeaders);
+  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].filter((value) => value);
+}
+
+function migrateDefaultProject(sheet) {
+  const headers = getHeaders(sheet, STATUS_HEADERS);
   const rows = sheet.getDataRange().getValues();
-  const ids = new Set(rows.slice(1).map((row) => row[0]).filter(Boolean));
+  if (rows.length < 2) return;
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i].slice();
+    let changed = false;
+    if (!getCell(row, headers, 'projectId')) {
+      setCell(row, headers, 'projectId', DEFAULT_PROJECT_ID);
+      changed = true;
+    }
+    if (!getCell(row, headers, 'プロジェクト名')) {
+      setCell(row, headers, 'プロジェクト名', DEFAULT_PROJECT_NAME);
+      changed = true;
+    }
+    if (changed) {
+      sheet.getRange(i + 1, 1, 1, headers.length).setValues([fitRow(row, headers.length)]);
+    }
+  }
+}
+
+function seedStatusRows(sheet, projectId, projectName) {
+  const headers = getHeaders(sheet, STATUS_HEADERS);
+  const rows = sheet.getDataRange().getValues();
+  const keys = new Set(rows.slice(1).map((row) => `${getCell(row, headers, 'projectId')}::${getCell(row, headers, 'agentId')}`));
   AGENTS.forEach(([agentId, agentName]) => {
-    if (!ids.has(agentId)) {
-      sheet.appendRow([agentId, agentName, '未着手', '', '', '報告待ち', '', '不要', '', '', 'setup']);
+    const key = `${projectId}::${agentId}`;
+    if (!keys.has(key)) {
+      sheet.appendRow(buildStatusRow(headers, {
+        source: 'setup',
+        projectId,
+        projectName,
+        agentId,
+        agentName,
+        status: '未着手',
+        taskTitle: '',
+        nowWhere: '',
+        waitingFor: '報告待ち',
+        memo: '',
+        codex: '不要',
+        lastUpdated: '',
+        raw: {}
+      }));
     }
   });
 }
@@ -252,8 +322,9 @@ function installFormSubmitTrigger() {
   }
 }
 
-function readStatusRows() {
+function readStatusRows(projectId) {
   const sheet = getStatusSheet();
+  migrateDefaultProject(sheet);
   const rows = sheet.getDataRange().getValues();
   const headers = rows.shift();
   return rows
@@ -261,8 +332,11 @@ function readStatusRows() {
     .map((row) => {
       const item = {};
       headers.forEach((header, index) => item[header] = row[index]);
+      if (!item.projectId) item.projectId = DEFAULT_PROJECT_ID;
+      if (!item['プロジェクト名']) item['プロジェクト名'] = DEFAULT_PROJECT_NAME;
       return item;
-    });
+    })
+    .filter((item) => !projectId || item.projectId === projectId);
 }
 
 function parsePayload(e) {
@@ -304,12 +378,27 @@ function findAgentName(agentId) {
   return pair ? pair[1] : '';
 }
 
-function getCell(row, header) {
-  return row[STATUS_HEADERS.indexOf(header)] || '';
+function getCell(row, headers, header) {
+  return row[headers.indexOf(header)] || '';
 }
 
-function setCell(row, header, value) {
-  row[STATUS_HEADERS.indexOf(header)] = value;
+function setCell(row, headers, header, value) {
+  row[headers.indexOf(header)] = value;
+}
+
+function fitRow(row, length) {
+  const next = row.slice(0, length);
+  while (next.length < length) next.push('');
+  return next;
+}
+
+function slugProject(projectName) {
+  if (projectName === DEFAULT_PROJECT_NAME) return DEFAULT_PROJECT_ID;
+  return safeText(projectName, 120)
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-ぁ-んァ-ヶ一-龠]/g, '')
+    .slice(0, 120) || DEFAULT_PROJECT_ID;
 }
 
 function safeText(value, maxLength) {
