@@ -1,6 +1,7 @@
 const TASK_STATUSES = ["未着手", "相談中", "素材待ち", "Codex投入待ち", "実務中", "確認待ち", "完了", "保留"];
-const ASSET_VERSION = "20260623-public-task-cleanup1";
+const ASSET_VERSION = "20260624-auto-sync1";
 const MEMO_STORAGE_KEY = "mayuko-ai-office.public.memo.v1";
+const SYNC_INTERVAL_MS = 60000;
 const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzpyQd8AlufvsC0zy4E5g8A47dQWYrbqpn8XZyjoAFLxE6Pjz-xY99WOyDOO4SEZjNh/exec";
 const GAS_STATUS_ENDPOINT = GAS_ENDPOINT;
 const PROJECT_ID = "mayuko-ai-office";
@@ -50,6 +51,8 @@ const state = {
   taskFilter: "all"
 };
 
+let syncTimer = 0;
+
 const els = {
   dataSourceNote: document.querySelector("#dataSourceNote"),
   agentCount: document.querySelector("#agentCount"),
@@ -75,10 +78,11 @@ async function init() {
   state.tasks = normalizeDisplayTasks(syncedTasks.tasks);
   state.activeAgentId = state.agents[0]?.id || "";
   state.activeFloorId = getAgentFloorId(state.agents[0]) || FLOORS[0].id;
-  els.dataSourceNote.textContent = syncedTasks.source === "gas" ? "スプシ進捗表示中" : "公開用データ表示中";
+  els.dataSourceNote.textContent = syncedTasks.source === "gas" ? getSyncNote() : "公開用データ表示中";
 
   setupFilters();
   render();
+  setupAutoSync();
 }
 
 async function loadJson(path, fallback) {
@@ -169,6 +173,32 @@ function setupFilters() {
       renderTasks();
     });
   });
+}
+
+function setupAutoSync() {
+  if (!GAS_STATUS_ENDPOINT || syncTimer) return;
+
+  syncTimer = window.setInterval(refreshSyncedTasks, SYNC_INTERVAL_MS);
+  window.addEventListener("focus", refreshSyncedTasks);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      refreshSyncedTasks();
+    }
+  });
+}
+
+async function refreshSyncedTasks() {
+  if (!GAS_STATUS_ENDPOINT) return;
+
+  try {
+    const syncedTasks = await loadSyncedTasks(state.tasks);
+    if (syncedTasks.source !== "gas") return;
+    state.tasks = normalizeDisplayTasks(syncedTasks.tasks);
+    els.dataSourceNote.textContent = getSyncNote();
+    render();
+  } catch {
+    els.dataSourceNote.textContent = "スプシ再読込に失敗。前回表示を継続";
+  }
 }
 
 function render() {
@@ -441,6 +471,13 @@ function formatDate(value) {
 
   const match = String(value).match(/\d{4}-\d{2}-\d{2}/);
   return match ? match[0] : String(value);
+}
+
+function getSyncNote(date = new Date()) {
+  return `スプシ進捗表示中（${date.toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit"
+  })}更新）`;
 }
 
 async function handleMemoSubmit(agent, task, memo) {
