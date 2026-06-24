@@ -2,6 +2,39 @@ const EVENTS_SHEET_NAME = 'office_events';
 const STATUS_SHEET_NAME = 'office_status';
 const DEFAULT_PROJECT_ID = 'mayuko-ai-office';
 const DEFAULT_PROJECT_NAME = 'まゆこAIオフィス';
+const PUBLIC_MEMO_MAX_LENGTH = 300;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+const RATE_LIMIT_PER_AGENT = 8;
+const RATE_LIMIT_PER_PROJECT = 30;
+
+const ALLOWED_STATUSES = [
+  '未着手',
+  '相談中',
+  '素材待ち',
+  'Codex投入待ち',
+  '実務中',
+  '確認待ち',
+  '完了',
+  '保留',
+  '明日やることある'
+];
+
+const PUBLIC_STATUS_HEADERS = [
+  'projectId',
+  'プロジェクト名',
+  'agentId',
+  'taskKey',
+  '担当AI',
+  '状態',
+  'タスク名',
+  '今どこまで',
+  '何待ち',
+  '私のメモ',
+  'Codex投入',
+  '最終更新',
+  '最終メモ日時',
+  'lastSource'
+];
 
 const EVENT_HEADERS = [
   '受信日時',
@@ -60,13 +93,19 @@ function setupOfficeSheets() {
 }
 
 function doGet(e) {
-  const projectId = safeText(e && e.parameter && e.parameter.projectId, 120);
+  const projectId = normalizeProjectId(e && e.parameter && e.parameter.projectId);
+  if (!projectId) {
+    return jsonResponse({ ok: false, error: 'invalid_project' });
+  }
   const data = {
     ok: true,
     status: readStatusRows(projectId)
   };
   const callback = e && e.parameter && e.parameter.callback;
   if (callback) {
+    if (!isValidJsonpCallback(callback)) {
+      return jsonResponse({ ok: false, error: 'invalid_callback' });
+    }
     return ContentService
       .createTextOutput(`${callback}(${JSON.stringify(data)});`)
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -77,6 +116,13 @@ function doGet(e) {
 function doPost(e) {
   const payload = parsePayload(e);
   const event = normalizePublicMemo(payload);
+  if (!event) {
+    return jsonResponse({ ok: false, error: 'invalid_payload' });
+  }
+  if (isRateLimited(`project:${event.projectId}`, RATE_LIMIT_PER_PROJECT, RATE_LIMIT_WINDOW_SECONDS) ||
+      isRateLimited(`agent:${event.projectId}:${event.agentId}`, RATE_LIMIT_PER_AGENT, RATE_LIMIT_WINDOW_SECONDS)) {
+    return jsonResponse({ ok: false, error: 'rate_limited' });
+  }
   appendEvent(event);
   upsertStatus(event);
 
@@ -91,31 +137,33 @@ function handleFormSubmit(e) {
 
 function normalizePublicMemo(payload) {
   const agentName = safeText(payload.agentName, 80);
-  const agentId = safeText(payload.agentId, 80) || findAgentId(agentName);
+  const agentId = normalizeAgentId(payload.agentId) || findAgentId(agentName);
+  const projectId = normalizeProjectId(payload.projectId);
+  if (!projectId || !agentId) return null;
   return {
     source: 'public_memo',
-    projectId: safeText(payload.projectId, 120) || DEFAULT_PROJECT_ID,
+    projectId,
     projectName: safeText(payload.projectName, 160) || DEFAULT_PROJECT_NAME,
     agentName: agentName || findAgentName(agentId),
     agentId,
-    taskKey: safeText(payload.taskKey, 160) || slugTask(payload.taskTitle || 'overview'),
-    status: safeText(payload.status, 40),
-    taskTitle: safeText(payload.taskTitle, 160),
+    taskKey: safeText(payload.taskKey, 120) || slugTask(payload.taskTitle || 'overview'),
+    status: normalizeStatus(payload.status),
+    taskTitle: safeText(payload.taskTitle, 120),
     nowWhere: '',
     waitingFor: '',
-    memo: safeText(payload.memo, 1000),
+    memo: safeText(payload.memo, PUBLIC_MEMO_MAX_LENGTH),
     codex: '',
     lastUpdated: '',
-    raw: payload
+    raw: {}
   };
 }
 
 function normalizeFormReport(e) {
   const named = e && e.namedValues ? e.namedValues : {};
   const projectName = firstNamed(named, ['プロジェクト名', '案件名', 'プロジェクト', 'projectName']) || DEFAULT_PROJECT_NAME;
-  const projectId = firstNamed(named, ['プロジェクトID', 'projectId']) || slugProject(projectName);
+  const projectId = normalizeProjectId(firstNamed(named, ['プロジェクトID', 'projectId']) || slugProject(projectName)) || DEFAULT_PROJECT_ID;
   const agentName = firstNamed(named, ['担当AI', 'AI社員', '担当']);
-  const status = firstNamed(named, ['状態', 'ステータス']);
+  const status = normalizeStatus(firstNamed(named, ['状態', 'ステータス']));
   const taskTitle = firstNamed(named, ['タスク名', '今お願いされていること', 'タスク']);
   const nowWhere = firstNamed(named, ['今どこまで', '進捗', '作業内容', 'どこまでやったか']);
   const waitingFor = firstNamed(named, ['何待ち', '待ち', '止まっている理由']);
@@ -344,7 +392,7 @@ function readStatusRows(projectId) {
     .filter((row) => row[0] || row[1])
     .map((row) => {
       const item = {};
-      headers.forEach((header, index) => item[header] = row[index]);
+      PUBLIC_STATUS_HEADERS.forEach((header) => item[header] = getCell(row, headers, header));
       if (!item.projectId) item.projectId = DEFAULT_PROJECT_ID;
       if (!item['プロジェクト名']) item['プロジェクト名'] = DEFAULT_PROJECT_NAME;
       if (!item.taskKey) item.taskKey = slugTask(item['タスク名'] || item['今どこまで'] || 'overview');
@@ -426,7 +474,41 @@ function slugTask(taskTitle) {
 }
 
 function safeText(value, maxLength) {
-  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+  return String(value || '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/[<>]/g, '')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
+
+function normalizeProjectId(value) {
+  const projectId = safeText(value, 120) || DEFAULT_PROJECT_ID;
+  return projectId === DEFAULT_PROJECT_ID ? projectId : '';
+}
+
+function normalizeAgentId(value) {
+  const agentId = safeText(value, 80);
+  return AGENTS.some((item) => item[0] === agentId) ? agentId : '';
+}
+
+function normalizeStatus(value) {
+  const status = safeText(value, 40);
+  return ALLOWED_STATUSES.indexOf(status) >= 0 ? status : '';
+}
+
+function isValidJsonpCallback(callback) {
+  return /^[A-Za-z_$][0-9A-Za-z_$]*(?:\.[A-Za-z_$][0-9A-Za-z_$]*)*$/.test(String(callback || ''));
+}
+
+function isRateLimited(key, limit, seconds) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = `rate:${key}`;
+  const current = Number(cache.get(cacheKey) || 0);
+  if (current >= limit) return true;
+  cache.put(cacheKey, String(current + 1), seconds);
+  return false;
 }
 
 function formatDate(date) {

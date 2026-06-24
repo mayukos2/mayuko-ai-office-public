@@ -584,7 +584,7 @@ async function handleMemoSubmit(agent, task, memo) {
       sentAt: new Date().toISOString()
     })
   });
-  alert("メモを送信しました。");
+  alert("メモを送信しました。反映まで少し待ってね。");
 }
 
 function getActiveFloor() {
